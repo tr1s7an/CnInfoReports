@@ -116,7 +116,7 @@ class CnInfoReports:
                 announcements = json_text['announcements']
 
                 if not announcements:
-                    print(code, ' 未查找到报告')
+                    print(code, '第' + str(self.data['pageNum']) + '页未查找到报告')
                     break
 
                 if not os.path.exists('data/' + code + '_' + name):
@@ -161,7 +161,7 @@ class CnInfoReports:
                 announcements = json_text['announcements']
 
                 if not announcements:
-                    print(code, ' 未查找到报告')
+                    print(code, '第' + str(self.data['pageNum']) + '页未查找到报告')
                     break
 
                 if not os.path.exists('data/' + code + '_' + name):
