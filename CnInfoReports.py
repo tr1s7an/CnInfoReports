@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import requests
-import json
 import os
 import time
 import random
@@ -12,11 +11,12 @@ class CnInfoReports:
     def __init__(
         self,
         cookies={
-            "JSESSIONID": "D11313E8B5C21E6F34B496244D588F41",
-            "_sp_ses.2141": "*",
-            "_sp_id.2141":
-            "7ccbaba6-9fc0-4141-9f20-4235125859f8.1619442550.1.1619442550.1619442550.1a8551c4-b0c0-4f5a-9190-643ad6de797e",
-            "routeId": ".uc2",
+            'JSESSIONID': '9A110350B0056BE0C4FDD8A627EF2868',
+            'insert_cookie': '37836164',
+            '_sp_ses.2141': '*',
+            '_sp_id.2141':
+            'e4c90bcb-6241-49c0-b9ae-82f4b24105c3.1620969681.1.1620969681.1620969681.ad5d4abf-09e0-4b3f-95ae-e48a19f5d659',
+            'routeId': '.uc1',
         },
         headers={
             'User-Agent':
@@ -55,54 +55,49 @@ class CnInfoReports:
             'isHLtitle': 'true'
         }
 
-    def get_stock_json(self, url):
-        stock_json_text = requests.get(url,
-                                       headers=self.headers,
-                                       cookies=self.cookies).text
-        stockList = json.loads(stock_json_text)['stockList']
-        return stockList
+    def get_stock_json(self, url: str) -> dict:
+        stock_json = requests.get(url,
+                                  headers=self.headers,
+                                  cookies=self.cookies).json()
+        stockList = stock_json['stockList']
+        stockDict = {each['code']: each for each in stockList}
+        return stockDict
 
-    def remove_invalid_stock(self, stock_list):
+    def remove_invalid_stock(self, stock_list: list) -> set:
         valid_shsz_stock = {}
         valid_hk_stock = {}
         for stock in stock_list:
             if len(stock) == 6:
-                valid_shsz_stock[stock] = None
-                for each in self.all_shsz_stock:
-                    if stock == each['code']:
-                        valid_shsz_stock[stock] = (each['orgId'], each['zwjc'])
-                        break
-                if not valid_shsz_stock[stock]:
+                try:
+                    this_stock = self.all_shsz_stock[stock]
+                    valid_shsz_stock[stock] = (this_stock['orgId'],
+                                               this_stock['zwjc'])
+                except KeyError:
                     print(stock, '找不到，跳过')
                     continue
             elif len(stock) == 5:
-                valid_hk_stock[stock] = None
-                for each in self.all_hk_stock:
-                    if stock == each['code']:
-                        valid_hk_stock[stock] = (each['orgId'], each['zwjc'])
-                        break
-                if not valid_hk_stock[stock]:
+                try:
+                    this_stock = self.all_hk_stock[stock]
+                    valid_hk_stock[stock] = (this_stock['orgId'],
+                                             this_stock['zwjc'])
+                except KeyError:
                     print(stock, '找不到，跳过')
                     continue
             else:
                 print(stock, '请确保代码为六位数字（A股）或五位数字（港股）')
         return valid_shsz_stock, valid_hk_stock
 
-    def download_shsz_report(self, stock_dict, seDate):
+    def download_shsz_report(self, stock_dict: dict, seDate: str) -> None:
         for code in stock_dict:
             orgId = stock_dict[code][0]
             name = stock_dict[code][1].replace('*', 'S')
 
-            if int(code) >= 600000:
-                self.data['column'] = 'sse'
-            else:
-                self.data['column'] = 'szse'
-
-            self.data['stock'] = code + ',' + orgId
-            self.data['seDate'] = seDate
             self.data['pageNum'] = 0
+            self.data['column'] = 'sse' if int(code) >= 600000 else 'szse'
+            self.data['stock'] = code + ',' + orgId
             self.data[
                 'category'] = 'category_ndbg_szsh;category_bndbg_szsh;category_yjdbg_szsh;category_sjdbg_szsh'
+            self.data['seDate'] = seDate
 
             hasMore = True
             while hasMore:
@@ -111,7 +106,7 @@ class CnInfoReports:
                                     headers=self.headers,
                                     data=self.data,
                                     cookies=self.cookies)
-                json_text = json.loads(res.text)
+                json_text = res.json()
                 hasMore = json_text['hasMore']
                 announcements = json_text['announcements']
 
@@ -139,16 +134,17 @@ class CnInfoReports:
                         self.download_pdf(pdf_url, pdf_path)
                         time.sleep(random.randint(1, 4))
 
-    def download_hk_report(self, stock_dict, seDate):
+    def download_hk_report(self, stock_dict: dict, seDate: str) -> None:
         for code in stock_dict:
             orgId = stock_dict[code][0]
             name = stock_dict[code][1]
 
-            self.data['column'] = 'hke'
-            self.data['seDate'] = seDate
             self.data['pageNum'] = 0
+            self.data['column'] = 'hke'
             self.data['stock'] = code + ',' + orgId
             self.data['category'] = ''
+            self.data['seDate'] = seDate
+
             hasMore = True
             while hasMore:
                 self.data['pageNum'] += 1
@@ -156,7 +152,7 @@ class CnInfoReports:
                                     headers=self.headers,
                                     data=self.data,
                                     cookies=self.cookies)
-                json_text = json.loads(res.text)
+                json_text = res.json()
                 hasMore = json_text['hasMore']
                 announcements = json_text['announcements']
 
@@ -189,12 +185,14 @@ class CnInfoReports:
                             self.download_pdf(pdf_url, pdf_path)
                             time.sleep(random.randint(1, 4))
 
-    def download_pdf(self, pdf_url, pdf_path):
+    def download_pdf(self, pdf_url: str, pdf_path: str) -> None:
         res = requests.get(pdf_url, headers=self.headers, cookies=self.cookies)
         with open(pdf_path, 'wb') as file:
             file.write(res.content)
 
-    def crawl(self, stocks, seDate='2000-01-01~' + str(date.today())):
+    def crawl(
+        self, stocks: str,
+        seDate: str = '2000-01-01~' + str(date.today())) -> None:
         stock_list = stocks.replace(' ', '').split(',')
         valid_shsz_stock, valid_hk_stock = self.remove_invalid_stock(
             stock_list)
@@ -202,5 +200,5 @@ class CnInfoReports:
         self.download_hk_report(valid_hk_stock, seDate)
 
 
-test = CnInfoReports()
-test.crawl('600600,00700')
+myreports = CnInfoReports()
+myreports.crawl('00700,603444')
