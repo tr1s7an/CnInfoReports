@@ -5,7 +5,9 @@ import os
 import time
 import random
 import concurrent.futures
+import logging
 from datetime import date
+from sys import stdout
 
 
 class CnInfoReports:
@@ -29,6 +31,7 @@ class CnInfoReports:
         self.cookies = cookies
         self.headers = headers
         self.thread = thread
+        self.logger = logging.getLogger('CnInfoReports')
         self.all_shsz_stock = self.get_stock_json('http://www.cninfo.com.cn/new/data/szse_stock.json')
         self.all_hk_stock = self.get_stock_json('http://www.cninfo.com.cn/new/data/hke_stock.json')
         self.query_url = 'http://www.cninfo.com.cn/new/hisAnnouncement/query'
@@ -49,17 +52,17 @@ class CnInfoReports:
                     this_stock = self.all_shsz_stock[stock]
                     valid_shsz_stock.append((this_stock['orgId'], this_stock['zwjc'], stock))
                 except KeyError:
-                    print(stock, '找不到，跳过')
+                    self.logger.warning(f'【{stock}】 证券代码无效，跳过')
                     continue
             elif len(stock) == 5:
                 try:
                     this_stock = self.all_hk_stock[stock]
                     valid_hk_stock.append((this_stock['orgId'], this_stock['zwjc'], stock))
                 except KeyError:
-                    print(stock, '找不到，跳过')
+                    self.logger.warning(f'【{stock} 】 证券代码无效，跳过')
                     continue
             else:
-                print(stock, '请确保代码为六位数字（A股）或五位数字（港股）')
+                self.logger.warning(f'【{stock}】 请确保代码为六位数字（A股）或五位数字（港股）')
         return valid_shsz_stock, valid_hk_stock
 
     def download_shsz_report(self, stock_tuple: tuple, seDate: str) -> None:
@@ -67,6 +70,7 @@ class CnInfoReports:
         orgId, name, code = stock_tuple
         name = name.replace('*', 'S')
         payload = self.data
+        self.logger.info(f'【{code}】 开始查询报告')
 
         payload['pageNum'] = 0
         payload['column'] = 'sse' if int(code) >= 600000 else 'szse'
@@ -83,7 +87,6 @@ class CnInfoReports:
             announcements = json_text['announcements']
 
             if not announcements:
-                print(code, '第' + str(payload['pageNum']) + '页未查找到报告')
                 continue
 
             if not os.path.exists('data/' + code + '_' + name):
@@ -99,7 +102,7 @@ class CnInfoReports:
                 pdf_url = 'http://static.cninfo.com.cn/' + adjunctUrl
 
                 if not os.path.exists(pdf_path):
-                    print('正在下载：', pdf_path)
+                    self.logger.info(f'【{code}】 正在下载：{pdf_path}')
                     res = req.get(pdf_url, headers=self.headers, cookies=self.cookies)
                     with open(pdf_path, 'wb') as file:
                         file.write(res.content)
@@ -125,7 +128,6 @@ class CnInfoReports:
             announcements = json_text['announcements']
 
             if not announcements:
-                print(code, '第' + str(payload['pageNum']) + '页未查找到报告')
                 continue
 
             if not os.path.exists('data/' + code + '_' + name):
@@ -140,13 +142,13 @@ class CnInfoReports:
 
                 if '年度报告' in announcementTitle or '年报' in announcementTitle or '中期报告' in announcementTitle or '中报' in announcementTitle or '季度报告' in announcementTitle or '季报' in announcementTitle:
                     if len(announcementTitle) > 15:
-                        print(name, announcementTitle, '名称过长疑非定期报告，如有需要请自行下载', 'http://static.cninfo.com.cn/' + adjunctUrl)
+                        self.logger.info(f'【{code} 】 名称过长疑非定期报告，如有需要请自行下载：【{name}】《{announcementTitle}》 http://static.cninfo.com.cn/{adjunctUrl}')
                         continue
                     pdf_path = 'data/' + code + '_' + name + '/' + code + '_' + name + '_' + announcementTitle + '.pdf'
                     pdf_url = 'http://static.cninfo.com.cn/' + adjunctUrl
 
                     if not os.path.exists(pdf_path):
-                        print('正在下载：', pdf_path)
+                        self.logger.info(f'【{code} 】 正在下载：{pdf_path}')
                         res = req.get(pdf_url, headers=self.headers, cookies=self.cookies)
                         with open(pdf_path, 'wb') as file:
                             file.write(res.content)
@@ -165,5 +167,11 @@ class CnInfoReports:
                 whatever = future.result()
 
 
-myreports = CnInfoReports()
-myreports.crawl(','.join(['{:0>6d}'.format(i) for i in range(600031, 600040)]) + ',' + ','.join(['{:0>5d}'.format(i) for i in range(10, 20)]), '2020-01-01~2021-01-01')
+if __name__ == '__main__':
+    logger = logging.getLogger('CnInfoReports')
+    logger.setLevel(logging.DEBUG)
+    sh = logging.StreamHandler(stdout)
+    sh.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s - %(message)s'))
+    logger.addHandler(sh)
+    myreports = CnInfoReports()
+    myreports.crawl(','.join(['{:0>6d}'.format(i) for i in range(600031, 600040)]) + ',' + ','.join(['{:0>5d}'.format(i) for i in range(10, 20)]), '2020-01-01~2021-01-01')
