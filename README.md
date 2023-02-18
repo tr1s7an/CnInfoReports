@@ -1,36 +1,30 @@
 # CnInfoReports
 
+## 特别提醒
+
+代码日前进行了重构，可下载A股港股所有公告分类，使用时需要自己构造 filter 字典指明公告查询条件，字典含义详见 [http://www.cninfo.com.cn/new/js/app/disclosure/notice/history-notice.js?v=20220902012750](http://www.cninfo.com.cn/new/js/app/disclosure/notice/history-notice.js?v=20220902012750)
+
 ## 功能
 
-从巨潮资讯网批量下载A股，港股上市公司定期报告
+从[巨潮资讯网](http://www.cninfo.com.cn/)根据条件查询和下载A股和港股公司公告
 
 ## 使用
 
-依赖 ~~requests~~ httpx 库
+- 依赖 httpx 库，主要代码是 [CnInfoReports.py](CnInfoReports.py) 中定义的 CnInfoReports 类，可以作为库导入或者直接修改该文件运行
 
-修改 CnInfoReports.py 文件底部两行，其中：
+- 调用 CnInfoReports.query_announcements_info 函数时，需要传入一个字典指明公告查询条件和一个布尔值确定是否下载 PDF，字典来源详见 [http://www.cninfo.com.cn/new/js/app/disclosure/notice/history-notice.js?v=20220902012750](http://www.cninfo.com.cn/new/js/app/disclosure/notice/history-notice.js?v=20220902012750)（使用前请务必点进去看下），字段名称见下图
+![](cninfo.png)
 
-第一行实例化类 CnInfoReports ，可选传入1个参数 max_threads，为最高线程数，默认值为5
+- 下载的报告在本级 data 文件夹下，按照证券代码分类
 
-第二行调用 crawl 方法，必填参数证券代码（多个请用英文逗号隔开），选填参数查询期间，默认为2000-01-01至今，格式为'2000-01-01~2021-05-02'
-
-下载的报告在data文件夹下，按照证券代码分类
-
-## 注意事项
-
-A股定期报告包括摘要和正文的报告（如有），如果不要的话，可以尝试修改，通过关键词检测跳过该类的下载。
-
-港股定期报告没有明确的tag可供查询，所以由关键词检测来实现下载，由于有些含有'年度报告'字样的报告可能是预告之类的，报告名称含有关键字但是名称过长的(len>15)会跳过下载，同时会有提示。
-
-## 下一步工作
+## Roadmap
 
 - [x] 使用多线程
 - [x] 使用 logging 代替 print 输出日志
 - [x] 使用 requests 的替代品 （httpx）
-- [ ] 更好处理撤回和更新的定期报告
+- [x] 更好处理撤回和更新的定期报告
+- [x] 可下载A股港股所有公告分类
 
-## 感谢
+## 鸣谢
 
 [xfeng2020/cninf_reports](https://github.com/xfeng2020/cninf_reports)
-
- 
