@@ -12,6 +12,8 @@
 
 - 依赖 httpx 库，主要代码是 [CnInfoReports.py](CnInfoReports.py) 中定义的 CnInfoReports 类，可以作为库导入或者直接修改该文件运行
 
+- 初始化 CnInfoReports 的实例时，可选传入2个参数：max_threads，为最高线程数，默认值为5；skip_download_stock_json，是否跳过下载 stock json 数据，默认为 False，即下载最新的数据，如果不是新上市的 stock 或用于测试，可设置为 True，使用 [stocks.json](stocks.json) 的现成数据，节省时间
+
 - 调用 CnInfoReports.query_announcements_info 函数时，需要传入一个字典指明公告查询条件和一个布尔值确定是否下载 PDF，字典来源详见 [http://www.cninfo.com.cn/new/js/app/disclosure/notice/history-notice.js?v=20220902012750](http://www.cninfo.com.cn/new/js/app/disclosure/notice/history-notice.js?v=20220902012750)（使用前请务必点进去看下），字段名称见下图
 ![](cninfo.png)
 
